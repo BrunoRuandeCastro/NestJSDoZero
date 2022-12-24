@@ -5,20 +5,26 @@ import { Repository } from 'typeorm';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { Course } from './entities/course.entity';
+import { Tag } from './entities/tag.entity';
 
 @Injectable()
 export class CoursesService {
     constructor(
         @InjectRepository(Course)
-        private readonly courseRespository: Repository<Course>
+        private readonly courseRespository: Repository<Course>,
+        @InjectRepository(Tag)
+        private readonly tagRespository: Repository<Tag>
     ) {}
 
     findAll() {
-        return this.courseRespository.find();
+        return this.courseRespository.find({relations:['tag']});
     }
 
     findOne(id: string) {
-        const course = this.courseRespository.findOne({ where: { id: Number(id) } });
+        const course = this.courseRespository.findOne({ 
+            where: { id: Number(id)},
+            relations:['tag']});
+
         if (!course) {
             throw new NotFoundException(`Infelizmente, o curso de id: ${id}, não foi encontrado`);
         }
@@ -26,19 +32,30 @@ export class CoursesService {
         return course;
     }
 
-    create(createCourseDto: CreateCourseDto) {
-        const course = this.courseRespository.create(createCourseDto);
+    async create(createCourseDto: CreateCourseDto) {
+        const tag = await Promise.all(
+            createCourseDto.tag.map((name)=> this.preloadTagByName(name))
+        );
+
+        const course = this.courseRespository.create({
+            ...createCourseDto, tag});
+
         return this.courseRespository.save(course);
     }
 
-    async update(id: string, updateCourseDto: UpdateCourseDto) {
+    async update(id: string,updateCourseDto: UpdateCourseDto) {
+
+        const tag = updateCourseDto.tag && (await Promise.all(
+            updateCourseDto.tag.map((name) => this.preloadTagByName(name))));
+
         const course = await this.courseRespository.preload({
             id: +id,
             ...updateCourseDto,
+            tag,
         });
 
         if (!course) {
-            throw new NotFoundException(`Não foi possivel atualizar os dados do curso de id: ${id}\br Tetativa: ${updateCourseDto}`)
+            throw new NotFoundException(`Não foi possivel atualizar os dados do curso de id: ${id} Tetativa: ${updateCourseDto}`)
         }
 
         return this.courseRespository.save(course)
@@ -51,5 +68,14 @@ export class CoursesService {
         }
 
         return this.courseRespository.remove(course)
+    }
+
+    private async preloadTagByName(name: string): Promise<Tag> {
+        const tag = await this.tagRespository.findOne({ where: { name } });
+        if (tag) {
+            return tag;
+        }
+
+        return this.tagRespository.create({ name });
     }
 }

@@ -13,6 +13,8 @@ import { CoursesModule } from './courses/courses.module';
     password: 'postgres',
     database: 'postgres',
     autoLoadEntities: true,
+//synchronize - não deve ser utilizado em produção. caso alguma coluna ou tabela for alterada
+//os registros das mesmas serão perdidos. Somente para desenvolvimento
     synchronize: true
   })],
   controllers: [AppController],
