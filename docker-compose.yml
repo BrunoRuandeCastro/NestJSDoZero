@@ -1,0 +1,40 @@
+# trabalha com identação para definir a hierarquicamente quais recursos estão atrelados a quais serviços
+#serviço da aplicacao
+version: "3"
+services:
+  app:
+    build: .
+    entrypoint: .docker/entrypoint.sh
+    container_name: coursenestjs-app
+    ports:
+      - "*3000:3000"
+    #quando rodar a aplicação, tudo vai ser espelhado para esta pasta do container
+    volumes:
+      - .:/home/node/app
+    depends_on:
+      - db
+#serviço do banco
+db:
+  build: .docker/postgres
+  container_name: coursenestjs-db
+  restart: always
+  tty: true
+  ports: -"5432:5432"
+  #caso o container seja apagado, mantemos um espelhamento
+  volumes:
+    - .docker/dbdata:/Program Files/PostgreSQL/15/data
+  enviroment:
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=coursenestjs
+
+  #client para gerenciar o banco de dados - interface web
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: coursenestjs-pgadmin
+    tty: true
+    enviroment:
+      - PGADMIN_DEFAULT_EMAIL= admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD= admin
+    ports: 
+      - 8000:80"
+    depends_on: db
